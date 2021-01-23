@@ -1,1 +1,1 @@
-# wagtail_movies
+## Коллекция - каталог фильмов с использованием wagtail(django)
