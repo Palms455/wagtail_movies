@@ -8,6 +8,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+movies/settings/local.py
 build/
 develop-eggs/
 dist/
