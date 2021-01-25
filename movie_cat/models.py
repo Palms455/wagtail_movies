@@ -1,15 +1,17 @@
-from django.db import models
-from django import forms
-
-from wagtail.snippets.models import register_snippet
-from modelcluster.fields import ParentalKey
-from wagtail.core.models import Page, Orderable
-from wagtail.core.fields import RichTextField
-from wagtail.admin.edit_handlers import FieldPanel
-from wagtail.images.edit_handlers import ImageChooserPanel
-from wagtail.admin.edit_handlers import FieldPanel, InlinePanel, MultiFieldPanel
-from wagtail.search import index
 from datetime import date
+
+from django import forms
+from django.db import models
+from modelcluster.fields import ParentalKey, ParentalManyToManyField
+from wagtail.admin.edit_handlers import (FieldPanel, InlinePanel,
+                                         MultiFieldPanel)
+from wagtail.core.fields import RichTextField
+from wagtail.core.models import Orderable, Page
+from wagtail.images.edit_handlers import ImageChooserPanel
+from wagtail.search import index
+from wagtail.snippets.models import register_snippet
+
+from wagtail.api import APIField
 
 
 @register_snippet
@@ -50,7 +52,7 @@ class Category(models.Model):
     class Meta:
         verbose_name = "Категория"
         verbose_name_plural = "Категории"
-        db_table = "'catalog.category'"
+        db_table = "'catalog'.'category'"
 
 
 class Actor(Page):
@@ -64,6 +66,10 @@ class Actor(Page):
         on_delete=models.SET_NULL,
         related_name='+'
     )
+    api_fields = [
+        APIField('title'),
+        APIField('description'),
+    ]
 
     content_panels = Page.content_panels + [
         FieldPanel('age'),
@@ -80,7 +86,7 @@ class Actor(Page):
     class Meta:
         verbose_name = "Актеры и режиссеры"
         verbose_name_plural = "Актеры и режиссеры"
-        db_table = "'catalog.actor'"
+        db_table = "'catalog'.'actor'"
 
 
 class Movie(Page):
@@ -96,21 +102,19 @@ class Movie(Page):
     )
     year = models.PositiveSmallIntegerField("Дата выхода", default=2019)
     country = models.CharField("Страна", max_length=30)
-    directors = models.ManyToManyField(Actor, verbose_name="режиссер", related_name="film_director")
-    actors = models.ManyToManyField(Actor, verbose_name="актеры", related_name="film_actor")
-    genres = models.ManyToManyField(Genre, verbose_name="жанры")
+    directors = ParentalManyToManyField(Actor, verbose_name="режиссер", related_name="film_director")
+    actors = ParentalManyToManyField(Actor, verbose_name="актеры", related_name="film_actor")
+    genres = ParentalManyToManyField(Genre, verbose_name="жанры")
     world_premiere = models.DateField("Примьера в мире", default=date.today)
     budget = models.PositiveIntegerField("Бюджет", default=0,
                                          help_text="указывать сумму в долларах")
     fees_in_usa = models.PositiveIntegerField(
         "Сборы в США", default=0, help_text="указывать сумму в долларах"
     )
-    fess_in_world = models.PositiveIntegerField(
+    fees_in_world = models.PositiveIntegerField(
         "Сборы в мире", default=0, help_text="указывать сумму в долларах"
     )
-    movie_category = models.ForeignKey(
-        Category, verbose_name="Категория", on_delete=models.SET_NULL, null=True
-    )
+    movie_category = ParentalManyToManyField(Category, verbose_name="Категория")
 
     search_fields = Page.search_fields + [
         index.SearchField('description'),
@@ -122,7 +126,12 @@ class Movie(Page):
         ImageChooserPanel('image'),
         FieldPanel('year'),
         FieldPanel('country'),
+        FieldPanel('directors'),
         FieldPanel('actors'),
+        FieldPanel('world_premiere'),
+        FieldPanel('budget'),
+        FieldPanel('fees_in_usa'),
+        FieldPanel('fees_in_world'),
         InlinePanel('gallery_images', label='Кадры из фильма'),
         InlinePanel('ratings', label='Рейтинг'),
         InlinePanel('reviews', label='Отзывы'),
@@ -130,11 +139,16 @@ class Movie(Page):
         FieldPanel('genres', widget=forms.CheckboxSelectMultiple),
     ]
 
+    api_fields = [
+        APIField('title'),
+        APIField('description'),
+        APIField('actors'),
+        APIField('genres'),
+        APIField('movie_category'),
+    ]
+
     def __str__(self):
         return self.title
-
-    def get_absolute_url(self):
-        return reverse("movie_detail", kwargs={"slug": self.slug})
 
     def get_review(self):
         return self.reviews_set.filter(parent__isnull=True)
@@ -142,7 +156,7 @@ class Movie(Page):
     class Meta:
         verbose_name = "Фильм"
         verbose_name_plural = "Фильмы"
-        db_table = "'catalog.movie'"
+        db_table = "'catalog'.'movie'"
 
 
 class MovieShots(Orderable):
@@ -164,7 +178,7 @@ class MovieShots(Orderable):
     class Meta:
         verbose_name = "Кадр из фильма"
         verbose_name_plural = "Кадры из фильма"
-        db_table = "'catalog.movie_shots'"
+        db_table = "'catalog'.'movie_shots'"
 
 
 class RatingStar(Orderable):
@@ -178,7 +192,7 @@ class RatingStar(Orderable):
         verbose_name = "Звезда рейтинга"
         verbose_name_plural = "Звезды рейтинга"
         ordering = ["-value"]
-        db_table = "'catalog.rating_star'"
+        db_table = "'catalog'.'rating_star'"
 
 
 class Rating(models.Model):
@@ -198,7 +212,7 @@ class Rating(models.Model):
     class Meta:
         verbose_name = "Рейтинг"
         verbose_name_plural = "Рейтинги"
-        db_table = "'catalog.rating'"
+        db_table = "'catalog'.'rating'"
 
 
 class Review(Orderable):
@@ -217,4 +231,4 @@ class Review(Orderable):
     class Meta:
         verbose_name = "Отзыв"
         verbose_name_plural = "Отзывы"
-        db_table = "'catalog.reviews'"
+        db_table = "'catalog'.'reviews'"
